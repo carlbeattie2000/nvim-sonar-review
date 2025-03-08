@@ -1,4 +1,4 @@
-# sonar-review
+# sonar-review **WIP**
 
 A Neovim plugin for managing SonarQube reports in your editor.
 
