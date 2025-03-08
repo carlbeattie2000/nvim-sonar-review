@@ -10,7 +10,7 @@ A Neovim plugin for managing SonarQube reports in your editor.
 
 ## Installation
 With Packer:
-use "yourusername/sonar-review"
+use "carlbeattie2000/sonar-review"
 
 ## Requirements
 - SonarQube: Running locally or on a custom server.
