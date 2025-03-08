@@ -3,10 +3,72 @@ local M = {}
 local read_file = vim.fn.stdpath("cache") .. "/sonar-review-read.json"
 local dismissed_file = vim.fn.stdpath("cache") .. "/sonar-review-dismissed.json"
 
+local function find_project_root()
+  local dir = vim.fn.expand("%:p:h")
+  local sonar_file = vim.fn.findfile("sonar-project.properties", dir .. ";")
+
+  if sonar_file == "" then
+    sonar_file = vim.fn.findfile("sonar-project.prompt_title", vim.fn.getcwd() .. ";")
+
+    if sonar_file == "" then
+      vim.notify("No sonar-project.properties found", vim.log.levels.WARN)
+
+      return nil
+    end
+  end
+
+  return vim.fn.fnamemodify(sonar_file, ":p:h")
+end
+
+local function get_sonar_project_key()
+  local root = find_project_root()
+
+  if not root then return nil end
+
+  local sonar_path = root .. "/sonar-project.properties"
+
+  if vim.fn.filereadable(sonar_path) == 1 then
+    for _, line in ipairs(vim.fn.readfile(sonar_path)) do
+      local key = line:match("^sonar%.projectKey=(.+)$")
+
+      if key then return key end
+    end
+  else
+    vim.notify("sonar-project.properties file not found in " .. root, vim.log.levels.INFO)
+
+    return nil
+  end
+end
+
+local function load_env()
+  local root = find_project_root()
+
+  if not root then return {}, nil end
+
+  local env_path = root .. "/.env"
+  local env = {}
+
+  if vim.fn.filereadable(env_path) == 1 then
+    for _, line in ipairs(vim.fn.readfile(env_path)) do
+      local key, value = line:match("^(.+)=(.+)$")
+
+      if key and value then
+        env[key] = value
+      end
+    end
+  else
+    vim.notify(".env not found in " .. root, vim.log.levels.INFO)
+  end
+
+  return env, root
+end
+
 local function load_state(file)
   if vim.fn.filereadable(file) == 1 then
     return vim.fn.json_decode(table.concat(vim.fn.readFile(file), "\n")) or {}
   end
+
+  return {}
 end
 
 local function save_state(state, file)
@@ -14,14 +76,14 @@ local function save_state(state, file)
 end
 
 local function get_issues(query)
-  local user = os.getenv("SONAR_USER") or "admin"
-  local pass = os.getenv("SONAR_PASS") or "admin"
+  local env, _ = load_env()
+  local token = env.SONAR_TOKEN or "admin"
   local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
+  local cmd = string.format('curl -s -u %s: "%s/api/issues/search?%s"', token, sonar_address, query)
+  local result = vim.fn.system({ "sh", "-c", cmd })
+  local ok, decoded = pcall(vim.fn.json_decode, result)
 
-  local cmd = string.format('curl -s -u %s:%s "%s/api/issues/search?%s"', user, pass, sonar_address, query)
-  local result = vim.fn.system(cmd)
-
-  return vim.fn.json_decode(result) or { issues = {} }
+  return ok and decoded or { issues = {} }
 end
 
 local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use_telescope)
@@ -67,15 +129,23 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
 end
 
 function M.show_buffer_reports()
-  local file = vim.fn.expand("%:p"):gsub(vim.fn.getcwd() .. "/", "")
-  if not file or file == "" then
-    vim.notify("No file in current buffer", vim.log.levels.WARN)
+  local env, root = load_env()
+  local project_key = get_sonar_project_key()
+
+  if not root or not project_key then return end
+
+  local file = vim.fn.expand("%:p")
+
+  if not file or file == "" or not file:match(root) then
+    vim.notify("No valid project file in buffer", vim.log.levels.WARN)
     return
   end
 
+  file = file:gsub(root .. "/", "")
+
   local dismissed = load_state(dismissed_file)
   local read = load_state(read_file)
-  local issues = get_issues("componentKeys=myproject&files=" .. file)
+  local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
   local lines = {}
   local issue_keys = {}
 
