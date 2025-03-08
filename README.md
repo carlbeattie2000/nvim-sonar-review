@@ -41,7 +41,7 @@ use "carlbeattie2000/sonar-review"
    - Add to your Packer config:
      require("packer").startup(function(use)
        use "wbthomason/packer.nvim"
-       use "yourusername/sonar-review"
+       use "carlbeattie2000/sonar-review"
      end)
    - Run :PackerSync and restart Neovim.
 

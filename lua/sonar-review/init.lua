@@ -10,7 +10,7 @@ local function load_state(file)
 end
 
 local function save_state(state, file)
-  vim.fn.writefile({vim.fn.json_encode(state)}, file)
+  vim.fn.writefile({ vim.fn.json_encode(state) }, file)
 end
 
 local function get_issues(query)
@@ -32,13 +32,13 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
       prompt_title = title,
       finder = require("telescope.finders").new_table({ results = lines }),
       sorter = require("telescope.sorters").get_generic_fuzzy_sorter(),
-      attach_mappings = function (prompt_bufnr, map)
-        map("i", "<CR>", function ()
+      attach_mappings = function(prompt_bufnr, map)
+        map("i", "<CR>", function()
           local sel = require("telescope.actions.state").get_selected_entry()[1]
           if on_select then on_select(sel, issue_keys[sel]) end
           require("telescope.actions").close(prompt_bufnr)
         end)
-        map("i", "<leader>d", function ()
+        map("i", "<leader>d", function()
           local sel = require("telescope.actions.state").get_selected_entry()[1]
           if on_dismiss and issue_keys[sel] then
             on_dismiss(sel, issue_keys[sel])
@@ -54,12 +54,12 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
     vim.api.nvim_buf_set_lines(0, -1, -1, false, lines)
     vim.bo.filetype = "markdown"
     vim.bo.buftype = "nofile"
-    vim.keymap.set("n", "<CR>", function ()
+    vim.keymap.set("n", "<CR>", function()
       local sel = vim.fn.getline(".")
       if on_select then on_select(sel, issue_keys[sel]) end
       vim.cmd("wincmd q")
     end, { buffer = 0 })
-    vim.keymap.set("n", "<leader>d", function ()
+    vim.keymap.set("n", "<leader>d", function()
       local sel = vim.fn.getline(".")
       if on_dismiss and issue_keys[sel] then on_dismiss(sel, issue_keys[sel]) end
     end, { buffer = 0 })
@@ -83,12 +83,12 @@ function M.show_buffer_reports()
     if not dismissed[issue.key] then
       local is_read = read[issue.key] and "[X]" or "[  ]"
       local line = string.format(
-      "%s - %s - %s %s (Line %s)",
-      issue.revision or "unknown",
-      issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
-      is_read,
-      issue.message,
-      issue.line or "N/A"
+        "%s - %s - %s %s (Line %s)",
+        issue.revision or "unknown",
+        issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
+        is_read,
+        issue.message,
+        issue.line or "N/A"
       )
 
       table.insert(lines, line)
@@ -99,27 +99,27 @@ function M.show_buffer_reports()
   if #lines == 0 then table.insert(lines, "No active issues found.") end
 
   show_reports("Reports for " .. file, lines, issue_keys,
-  function (_, key)
-    local file_line = vim.fn.getline("."):match("Line (%d+)")
+    function(_, key)
+      local file_line = vim.fn.getline("."):match("Line (%d+)")
 
-    if file_line then
-      vim.api.nvim_win_set_cursor(0, { tonumber(file_line), 0 })
-    end
+      if file_line then
+        vim.api.nvim_win_set_cursor(0, { tonumber(file_line), 0 })
+      end
 
-    if key then
+      if key then
+        read[key] = true
+        save_state(read, read_file)
+      end
+    end,
+    function(_, key)
+      dismissed[key] = true
       read[key] = true
-      save_state(read, read_file)
-    end
-  end,
-  function (_, key)
-    dismissed[key] = true
-    read[key] = true
 
-    save_state(dismissed, dismissed_file)
-    save_state(read, read_file)
-    M.show_buffer_reports()
-  end,
-  false)
+      save_state(dismissed, dismissed_file)
+      save_state(read, read_file)
+      M.show_buffer_reports()
+    end,
+    false)
 end
 
 function M.show_commit_reports()
@@ -143,7 +143,13 @@ function M.show_commit_reports()
           local key = commit_hash .. ":" .. issue.key
           local is_read = read[key] and "[X]" or "[  ]"
 
-          table.insert(reports, { text = is_read .. " " .. issue.message .. " (Line " .. (issue.line or "N/A") .. ")", key = key, issue_key = issue.key })
+          table.insert(reports,
+            {
+              text = is_read .. " " .. issue.message .. " (Line " .. (issue.line or "N/A") .. ")",
+              key = key,
+              issue_key =
+                  issue.key
+            })
         end
       end
       if #reports > 0 then file_issues[file] = reports end
@@ -154,7 +160,10 @@ function M.show_commit_reports()
 
       for _, reports in pairs(file_issues) do
         for _, report in ipairs(reports) do
-          if not read[report.key] then all_read = false break end
+          if not read[report.key] then
+            all_read = false
+            break
+          end
         end
       end
 
@@ -171,27 +180,27 @@ function M.show_commit_reports()
   end
 
   show_reports("Commit Reports ", lines, issue_keys,
-  function (sel, key)
-    if not sel:match("^%s%s%s%s") then return end
+    function(sel, key)
+      if not sel:match("^%s%s%s%s") then return end
 
-    if key then
-      read[key] = true
-      save_state(read, read_file)
-      M.show_commit_reports()
-    end
-  end,
-  function (sel, key)
-    if not sel:match("^%s%s%s%s") then return end
+      if key then
+        read[key] = true
+        save_state(read, read_file)
+        M.show_commit_reports()
+      end
+    end,
+    function(sel, key)
+      if not sel:match("^%s%s%s%s") then return end
 
-    if key then
-      dismissed[key:match(":(.+)$")] = true
-      read[key] = true
-      save_state(read, read_file)
-      save_state(dismissed, dismissed_file)
-      M.show_commit_reports()
-    end
-  end,
-  true)
+      if key then
+        dismissed[key:match(":(.+)$")] = true
+        read[key] = true
+        save_state(read, read_file)
+        save_state(dismissed, dismissed_file)
+        M.show_commit_reports()
+      end
+    end,
+    true)
 end
 
 function M.show_file_reports()
@@ -205,7 +214,10 @@ function M.show_file_reports()
     if not dismissed[issue.key] then
       local file = issue.component:match("myproject:(.+)") or issue.component
 
-      if not seen[file] then table.insert(files, file) seen[file] = true end
+      if not seen[file] then
+        table.insert(files, file)
+        seen[file] = true
+      end
     end
   end
 
@@ -228,12 +240,12 @@ function M.show_file_reports()
             if not dismissed[issue.key] then
               local is_read = read[issue.key] and "[x]" or "[ ]"
               local line = string.format(
-              "%s - %s - %s %s (Line %s)",
-              issue.revision or "unknown",
-              issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
-              is_read,
-              issue.message,
-              issue.line or "N/A"
+                "%s - %s - %s %s (Line %s)",
+                issue.revision or "unknown",
+                issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
+                is_read,
+                issue.message,
+                issue.line or "N/A"
               )
               table.insert(report_lines, line)
               issue_keys[line] = issue.key
@@ -243,27 +255,27 @@ function M.show_file_reports()
           if #report_lines == 0 then table.insert(report_lines, "No active issues.") end
 
           show_reports("Reports for " .. file, report_lines, issue_keys,
-          function(_, key)
-            local file_line = vim.fn.getline("."):match("Line (%d+)")
+            function(_, key)
+              local file_line = vim.fn.getline("."):match("Line (%d+)")
 
-            if key then
+              if key then
+                read[key] = true
+                save_state(read, read_file)
+              end
+
+              if file_line then
+                vim.cmd("edit " .. file)
+                vim.api.nvim_win_set_cursor(0, { tonumber(file_line), 0 })
+              end
+            end,
+            function(_, key)
+              dismissed[key] = true
               read[key] = true
+              save_state(dismissed, dismissed_file)
               save_state(read, read_file)
-            end
-
-            if file_line then
-              vim.cmd("edit " .. file)
-              vim.api.nvim_win_set_cursor(0, {tonumber(file_line), 0})
-            end
-          end,
-          function(_, key)
-            dismissed[key] = true
-            read[key] = true
-            save_state(dismissed, dismissed_file)
-            save_state(read, read_file)
-            M.show_file_reports()
-          end,
-          true)
+              M.show_file_reports()
+            end,
+            true)
         end)
         return true
       end,
@@ -271,10 +283,10 @@ function M.show_file_reports()
   else
     show_reports("Files with Reports", files, {},
 
-    function(sel)
-      vim.cmd("edit " .. sel)
-      M.show_buffer_reports() -- Fallback to buffer reports
-    end, nil, false)
+      function(sel)
+        vim.cmd("edit " .. sel)
+        M.show_buffer_reports() -- Fallback to buffer reports
+      end, nil, false)
   end
 end
 
