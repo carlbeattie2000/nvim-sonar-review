@@ -1,4 +1,4 @@
-# sonar-review **WIP**
+# nvim-sonar-review **WIP**
 
 A Neovim plugin for managing SonarQube reports in your editor.
 
@@ -10,7 +10,7 @@ A Neovim plugin for managing SonarQube reports in your editor.
 
 ## Installation
 With Packer:
-use "carlbeattie2000/sonar-review"
+use "carlbeattie2000/nvim-sonar-review"
 
 ## Requirements
 - SonarQube: Running locally or on a custom server.
@@ -41,7 +41,7 @@ use "carlbeattie2000/sonar-review"
    - Add to your Packer config:
      require("packer").startup(function(use)
        use "wbthomason/packer.nvim"
-       use "carlbeattie2000/sonar-review"
+       use "carlbeattie2000/nvim-sonar-review"
      end)
    - Run :PackerSync and restart Neovim.
 
