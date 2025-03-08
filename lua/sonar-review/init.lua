@@ -194,6 +194,90 @@ function M.show_commit_reports()
   true)
 end
 
+function M.show_file_reports()
+  local dismissed = load_state(dismissed_file)
+  local read = load_state(read_file)
+  local files = {}
+  local seen = {}
+  local all_issues = get_issues("componentKeys=myproject")
+
+  for _, issue in ipairs(all_issues.issues) do
+    if not dismissed[issue.key] then
+      local file = issue.component:match("myproject:(.+)") or issue.component
+
+      if not seen[file] then table.insert(files, file) seen[file] = true end
+    end
+  end
+
+  local has_telescope, telescope = pcall(require, "telescope.pickers")
+
+  if has_telescope then
+    telescope.new({
+      prompt_title = "Files with Reports",
+      finder = require("telescope.finders").new_table({ results = files }),
+      sorter = require("telescope.sorters").get_fuzzy_file(),
+      attach_mappings = function(prompt_bufnr, map)
+        map("i", "<CR>", function()
+          local file = require("telescope.actions.state").get_selected_entry()[1]
+          require("telescope.actions").close(prompt_bufnr)
+          local issues = get_issues("componentKeys=myproject&files=" .. file)
+          local report_lines = {}
+          local issue_keys = {}
+
+          for _, issue in ipairs(issues.issues) do
+            if not dismissed[issue.key] then
+              local is_read = read[issue.key] and "[x]" or "[ ]"
+              local line = string.format(
+              "%s - %s - %s %s (Line %s)",
+              issue.revision or "unknown",
+              issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
+              is_read,
+              issue.message,
+              issue.line or "N/A"
+              )
+              table.insert(report_lines, line)
+              issue_keys[line] = issue.key
+            end
+          end
+
+          if #report_lines == 0 then table.insert(report_lines, "No active issues.") end
+
+          show_reports("Reports for " .. file, report_lines, issue_keys,
+          function(_, key)
+            local file_line = vim.fn.getline("."):match("Line (%d+)")
+
+            if key then
+              read[key] = true
+              save_state(read, read_file)
+            end
+
+            if file_line then
+              vim.cmd("edit " .. file)
+              vim.api.nvim_win_set_cursor(0, {tonumber(file_line), 0})
+            end
+          end,
+          function(_, key)
+            dismissed[key] = true
+            read[key] = true
+            save_state(dismissed, dismissed_file)
+            save_state(read, read_file)
+            M.show_file_reports()
+          end,
+          true)
+        end)
+        return true
+      end,
+    }, {}):find()
+  else
+    show_reports("Files with Reports", files, {},
+
+    function(sel)
+      vim.cmd("edit " .. sel)
+      M.show_buffer_reports() -- Fallback to buffer reports
+    end, nil, false)
+  end
+end
+
 function M.setup(opts) end
 
 return M
