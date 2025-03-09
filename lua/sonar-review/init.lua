@@ -2,6 +2,7 @@ local M = {}
 
 local default_options = {
   only_show_owned_issues = false,
+  include_security_hotspots_insecure = false
 }
 
 local config = vim.tbl_deep_extend("force", default_options, {})
@@ -84,15 +85,45 @@ local function save_state(state, file)
   vim.fn.writefile({ vim.fn.json_encode(state) }, file)
 end
 
+local function get_hotspots(query)
+  local env, _ = load_env()
+  local token = env.SONAR_TOKEN or "admin"
+  local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
+  local hotspot_query = query:gsub("componentKeys=", "project=")
+  local cmd = string.format("curl -s -u %s: '%s/api/hotspots/search?%s'", token, sonar_address, hotspot_query)
+  vim.print(cmd)
+  local result = vim.fn.system({ "sh", "-c", cmd })
+  local ok, decoded = pcall(vim.fn.json_decode, result)
+
+  return ok and decoded or { hotspots = {} }
+end
+
 local function get_issues(query)
   local env, _ = load_env()
   local token = env.SONAR_TOKEN or "admin"
   local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
   local cmd = string.format('curl -s -u %s: "%s/api/issues/search?%s"', token, sonar_address, query)
+  vim.print(cmd)
   local result = vim.fn.system({ "sh", "-c", cmd })
-  local ok, decoded = pcall(vim.fn.json_decode, result)
+  local ok, issues_decoded = pcall(vim.fn.json_decode, result)
+  local issues = ok and issues_decoded or { issues = {} }
 
-  return ok and decoded or { issues = {} }
+  if not config.include_security_hotspots_insecure then
+    return issues
+  end
+
+  local hotspots_data = get_hotspots(query)
+
+  if hotspots_data.errors then
+    return issues
+  end
+
+  local combined_issues = {}
+
+  for _, issue in ipairs(issues) do table.insert(combined_issues, issue) end
+  for _, issue in ipairs(hotspots_data.hotspots) do table.insert(combined_issues, issue) end
+
+  return { issues = combined_issues }
 end
 
 local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use_telescope)
