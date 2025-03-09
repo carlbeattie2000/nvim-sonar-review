@@ -1,6 +1,16 @@
 local M = {}
 
+local default_options = {
+  only_show_owned_issues = false,
+}
+
+local config = vim.tbl_deep_extend("force", default_options, {})
+
 local read_file = vim.fn.stdpath("cache") .. "/sonar-review-read.json"
+
+local function get_git_email()
+  return vim.fn.system("git config user.email") or nil
+end
 
 local function find_project_root()
   local dir = vim.fn.expand("%:p:h")
@@ -85,16 +95,6 @@ local function get_issues(query)
   return ok and decoded or { issues = {} }
 end
 
-local function clear_outdated_cache_results()
-  local project_key = get_sonar_project_key()
-  vim.print(tostring(vim.fn.filereadable(read_file)))
-  vim.print(vim.fn.json_decode(table.concat(vim.fn.readfile(read_file), "\n")))
-  vim.print(project_key)
-  local issues = get_issues("componentKeys=" .. project_key)
-  vim.print(issues)
-end
-
-
 local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use_telescope)
   local has_telescope, telescope = pcall(require, "telescope.pickers")
 
@@ -138,7 +138,6 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
 end
 
 function M.show_buffer_reports()
-  clear_outdated_cache_results()
   local env, root = load_env()
   local project_key = get_sonar_project_key()
 
@@ -160,6 +159,10 @@ function M.show_buffer_reports()
 
   for _, issue in ipairs(issues.issues) do
     if issue.issueStatus ~= "FIXED" then
+      if config.only_show_owned_issues and issue.author ~= get_git_email() then
+        goto continue
+      end
+
       local is_read = read[issue.key] and "[X]" or "[  ]"
       local line = string.format(
         "%s - %s - %s %s (Line %s)",
@@ -173,6 +176,7 @@ function M.show_buffer_reports()
       table.insert(lines, line)
       issue_keys[line] = issue.key
     end
+    ::continue::
   end
 
   if #lines == 0 then table.insert(lines, "No active issues found.") end
@@ -211,6 +215,10 @@ function M.show_file_reports()
 
   for _, issue in ipairs(all_issues.issues) do
     if issue.issueStatus ~= "FIXED" then
+      if config.only_show_owned_issues and issue.author ~= get_git_email() then
+        goto continue
+      end
+
       local file = issue.component:match(project_key .. ":(.+)") or issue.component
 
       if not seen[file] then
@@ -218,6 +226,8 @@ function M.show_file_reports()
         seen[file] = true
       end
     end
+
+    ::continue::
   end
 
   local has_telescope, telescope = pcall(require, "telescope.pickers")
@@ -287,6 +297,8 @@ function M.show_file_reports()
   end
 end
 
-function M.setup(opts) end
+function M.setup(opts)
+  config = vim.tbl_deep_extend("force", default_options, opts or {})
+end
 
 return M
