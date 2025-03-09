@@ -9,8 +9,8 @@ local config = vim.tbl_deep_extend("force", default_options, {})
 
 local read_file = vim.fn.stdpath("cache") .. "/sonar-review-read.json"
 
-local function get_git_email()
-  return vim.fn.system("git config user.email") or nil
+function M.get_git_email()
+  return vim.fn.system("git config user.email"):gsub("%s+", "") or nil
 end
 
 local function find_project_root()
@@ -168,6 +168,86 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
   end
 end
 
+local function show_issue_details(file, issue)
+  vim.print(issue)
+  local issue_type = issue.type or "UNKNOWN"
+  local type_display = (issue_type == "SECURITY_HOTSPOT" and "Security Hotspot") or issue_type
+  local issue_status = issue.issueStatus or issue.status
+
+  local lines = {
+    "# Issue Details: " .. file,
+    "",
+    "**Type**: " .. type_display,
+    "**Message**: " .. issue.message,
+    "**Line**: " .. (issue.line or "N/A"),
+    "**Created**: " .. (issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d") or "unknown"),
+    "**Status**: " .. issue_status,
+    "**Author**: " .. (issue.author or "unknown"),
+    "**Effort**: " .. (issue.effort or "N/A"),
+  }
+
+  if issue.quickFixAvailable then
+    table.insert(lines, "**Quick Fix**: Available")
+  end
+
+  if #issue.flows > 0 then
+    table.insert(lines, "")
+    table.insert(lines, "## Flows")
+
+    for i, flow in ipairs(issue.flows) do
+      table.insert(lines, "- Flow " .. i .. ": " .. (flow.description or "N/A"))
+    end
+  end
+
+  local width = math.min(80, vim.o.columns - 4)
+  local height = math.min(#lines + 2, vim.o.lines - 4)
+  local buf = vim.api.nvim_create_buf(false, true)
+
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
+  vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    width = width,
+    height = height,
+    col = math.floor((vim.o.columns - width) / 2),
+    row = math.floor((vim.o.lines - height) / 2),
+    style = "minimal",
+    border = "rounded",
+  })
+
+  vim.keymap.set("n", "q", ":q<CR>", { buffer = buf, silent = true })
+  vim.keymap.set("n", "<CR>", function()
+    if issue.line then
+      vim.api.nvim_win_close(win, true)
+      vim.cmd("edit " .. file)
+      vim.api.nvim_win_set_cursor(0, { tonumber(issue.line), 0 })
+    end
+  end, { buffer = buf, silent = true })
+end
+
+local function show_issue_titles(file, titles, issue_details)
+  local has_telescope, telescope = pcall(require, "telescope.pickers")
+
+  if has_telescope then
+    telescope.new({
+      prompt_title = "Issues for " .. file,
+      finder = require("telescope.finders").new_table({ results = titles }),
+      sorter = require("telescope.sorters").get_generic_fuzzy_sorter(),
+      attach_mappings = function (prompt_bufnr, map)
+        map("i", "<CR>", function ()
+          local title = require("telescope.actions.state").get_selected_entry()[1]
+          require("telescope.actions").close(prompt_bufnr)
+          show_issue_details(file, issue_details[title])
+        end)
+
+        return true
+      end,
+    }, {}):find()
+  end
+end
+
 function M.show_buffer_reports()
   local env, root = load_env()
   local project_key = get_sonar_project_key()
@@ -183,56 +263,32 @@ function M.show_buffer_reports()
 
   file = file:gsub(root .. "/", "")
 
-  local read = load_state(read_file)
   local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
-  local lines = {}
-  local issue_keys = {}
+  local titles = {}
+  local issue_details = {}
 
   for _, issue in ipairs(issues.issues) do
     if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author ~= get_git_email() then
+      if config.only_show_owned_issues and issue.author ~= M.get_git_email() then
         goto continue
       end
 
-      local is_read = read[issue.key] and "[X]" or "[  ]"
-      local line = string.format(
-        "%s - %s - %s %s (Line %s)",
-        issue.revision or "unknown",
-        issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
-        is_read,
+      local title = string.format(
+        "[%s] %s (Line %s)",
+        issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
         issue.message,
-        issue.line or "N/A"
-      )
+        issue.line or "N/A")
 
-      table.insert(lines, line)
-      issue_keys[line] = issue.key
+      table.insert(titles, title)
+      issue_details[title] = issue
     end
     ::continue::
   end
 
-  if #lines == 0 then table.insert(lines, "No active issues found.") end
+  if #titles == 0 then table.insert(titles, "No active issues found.") end
 
-  show_reports("Reports for " .. file, lines, issue_keys,
-    function(_, key)
-      local file_line = vim.fn.getline("."):match("Line (%d+)")
-
-      if file_line then
-        vim.api.nvim_win_set_cursor(0, { tonumber(file_line), 0 })
-      end
-
-      if key then
-        read[key] = true
-        save_state(read, read_file)
-      end
-    end,
-    function(_, key)
-      read[key] = true
-
-      save_state(read, read_file)
-      M.show_buffer_reports()
-    end,
-    false)
-end
+  show_issue_titles(file, titles, issue_details)
+ end
 
 function M.show_file_reports()
   local project_key = get_sonar_project_key()
@@ -246,7 +302,7 @@ function M.show_file_reports()
 
   for _, issue in ipairs(all_issues.issues) do
     if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author ~= get_git_email() then
+      if config.only_show_owned_issues and issue.author ~= M.get_git_email() then
         goto continue
       end
 
@@ -257,7 +313,6 @@ function M.show_file_reports()
         seen[file] = true
       end
     end
-
     ::continue::
   end
 
@@ -273,58 +328,52 @@ function M.show_file_reports()
           local file = require("telescope.actions.state").get_selected_entry()[1]
           require("telescope.actions").close(prompt_bufnr)
           local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
-          local report_lines = {}
-          local issue_keys = {}
+          local titles = {}
+          local issue_details = {}
 
           for _, issue in ipairs(issues.issues) do
             if issue.issueStatus ~= "FIXED" then
-              local is_read = read[issue.key] and "[x]" or "[ ]"
-              local line = string.format(
-                "%s - %s - %s %s (Line %s)",
-                issue.revision or "unknown",
-                issue.creationDate:match("^%d%d%d%d%-%d%d%-%d%d"),
-                is_read,
+              local title = string.format(
+                "[%s] %s (Line %s)",
+                issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
                 issue.message,
-                issue.line or "N/A"
-              )
-              table.insert(report_lines, line)
-              issue_keys[line] = issue.key
+                issue.line or "N/A")
+
+              table.insert(titles, title)
+              issue_details[title] = issue
             end
           end
 
-          if #report_lines == 0 then table.insert(report_lines, "No active issues.") end
+          if #titles == 0 then titles = { "No active issues." } end
 
-          show_reports("Reports for " .. file, report_lines, issue_keys,
-            function(_, key)
-              local file_line = vim.fn.getline("."):match("Line (%d+)")
-
-              if key then
-                read[key] = true
-                save_state(read, read_file)
-              end
-
-              if file_line then
-                vim.cmd("edit " .. file)
-                vim.api.nvim_win_set_cursor(0, { tonumber(file_line), 0 })
-              end
-            end,
-            function(_, key)
-              read[key] = true
-              save_state(read, read_file)
-              M.show_file_reports()
-            end,
-            true)
+          show_issue_titles(file, titles, issue_details)
         end)
         return true
       end,
     }, {}):find()
   else
-    show_reports("Files with Reports", files, {},
+    show_reports("Files with Reports", files, {}, function (sel)
+      local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. sel)
+      local titles = {}
+      local issue_details = {}
 
-      function(sel)
-        vim.cmd("edit " .. sel)
-        M.show_buffer_reports() -- Fallback to buffer reports
-      end, nil, false)
+      for _, issue in ipairs(issues.issues) do
+        if issue.issueStatus ~= "FIXED" then
+          local title = string.format(
+            "[%s] %s (Line %s)",
+            issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
+            issue.message,
+            issue.line or "N/A")
+
+          table.insert(titles, title)
+          issue_details[issue] = issue
+        end
+      end
+
+      if #titles == 0 then titles = { "No active issues." } end
+
+      show_issue_titles(sel, titles, issue_details)
+    end, nil, false)
   end
 end
 
