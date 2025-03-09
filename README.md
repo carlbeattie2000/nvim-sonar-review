@@ -54,6 +54,5 @@ use "carlbeattie2000/nvim-sonar-review"
 
 ## Usage
 - <leader>br: Reports for the current file.
-- <leader>cr: Browse commits and their reports (with read status).
 - <leader>fr: Search files with issues, then view reports.
 - <leader>d: Dismiss a report to remove it.
