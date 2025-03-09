@@ -65,7 +65,7 @@ end
 
 local function load_state(file)
   if vim.fn.filereadable(file) == 1 then
-    return vim.fn.json_decode(table.concat(vim.fn.readFile(file), "\n")) or {}
+    return vim.fn.json_decode(table.concat(vim.fn.readfile(file), "\n")) or {}
   end
 
   return {}
@@ -192,97 +192,20 @@ function M.show_buffer_reports()
     false)
 end
 
-function M.show_commit_reports()
-  local read = load_state(read_file)
-  local dismissed = load_state(dismissed_file)
-  local commits = vim.fn.systemlist("git log --pretty=format: '%h - %ad - %s' --date=short -n 10")
-  local lines = {}
-  local issue_keys = {}
-
-  for _, commit_line in ipairs(commits) do
-    local commit_hash = commit_line:match("^(%w+)")
-    local files = vim.fn.systemlist("git diff-tree --no-commit-id --name-only -r " .. commit_hash)
-    local file_issues = {}
-
-    for _, file in ipairs(files) do
-      local issues = get_issues("componentKeys=myproject&files=" .. file)
-      local reports = {}
-
-      for _, issue in ipairs(issues.issue) do
-        if not dismissed[issue.key] then
-          local key = commit_hash .. ":" .. issue.key
-          local is_read = read[key] and "[X]" or "[  ]"
-
-          table.insert(reports,
-            {
-              text = is_read .. " " .. issue.message .. " (Line " .. (issue.line or "N/A") .. ")",
-              key = key,
-              issue_key =
-                  issue.key
-            })
-        end
-      end
-      if #reports > 0 then file_issues[file] = reports end
-    end
-
-    if next(file_issues) then
-      local all_read = true
-
-      for _, reports in pairs(file_issues) do
-        for _, report in ipairs(reports) do
-          if not read[report.key] then
-            all_read = false
-            break
-          end
-        end
-      end
-
-      table.insert(lines, (all_read and "[x] " or "[ ] ") .. commit_line)
-
-      for file, reports in pairs(file_issues) do
-        table.insert(lines, " " .. file)
-        for _, report in ipairs(reports) do
-          table.insert(lines, "   " .. report.text)
-          issue_keys[lines[#lines]] = report.key
-        end
-      end
-    end
-  end
-
-  show_reports("Commit Reports ", lines, issue_keys,
-    function(sel, key)
-      if not sel:match("^%s%s%s%s") then return end
-
-      if key then
-        read[key] = true
-        save_state(read, read_file)
-        M.show_commit_reports()
-      end
-    end,
-    function(sel, key)
-      if not sel:match("^%s%s%s%s") then return end
-
-      if key then
-        dismissed[key:match(":(.+)$")] = true
-        read[key] = true
-        save_state(read, read_file)
-        save_state(dismissed, dismissed_file)
-        M.show_commit_reports()
-      end
-    end,
-    true)
-end
-
 function M.show_file_reports()
+  local project_key = get_sonar_project_key()
+
+  if not project_key then return end
+
   local dismissed = load_state(dismissed_file)
   local read = load_state(read_file)
   local files = {}
   local seen = {}
-  local all_issues = get_issues("componentKeys=myproject")
+  local all_issues = get_issues("componentKeys="..project_key)
 
   for _, issue in ipairs(all_issues.issues) do
     if not dismissed[issue.key] then
-      local file = issue.component:match("myproject:(.+)") or issue.component
+      local file = issue.component:match(project_key .. ":(.+)") or issue.component
 
       if not seen[file] then
         table.insert(files, file)
@@ -302,7 +225,7 @@ function M.show_file_reports()
         map("i", "<CR>", function()
           local file = require("telescope.actions.state").get_selected_entry()[1]
           require("telescope.actions").close(prompt_bufnr)
-          local issues = get_issues("componentKeys=myproject&files=" .. file)
+          local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
           local report_lines = {}
           local issue_keys = {}
 
