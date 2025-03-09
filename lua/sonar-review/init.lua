@@ -1,7 +1,6 @@
 local M = {}
 
 local read_file = vim.fn.stdpath("cache") .. "/sonar-review-read.json"
-local dismissed_file = vim.fn.stdpath("cache") .. "/sonar-review-dismissed.json"
 
 local function find_project_root()
   local dir = vim.fn.expand("%:p:h")
@@ -86,6 +85,16 @@ local function get_issues(query)
   return ok and decoded or { issues = {} }
 end
 
+local function clear_outdated_cache_results()
+  local project_key = get_sonar_project_key()
+  vim.print(tostring(vim.fn.filereadable(read_file)))
+  vim.print(vim.fn.json_decode(table.concat(vim.fn.readfile(read_file), "\n")))
+  vim.print(project_key)
+  local issues = get_issues("componentKeys=" .. project_key)
+  vim.print(issues)
+end
+
+
 local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use_telescope)
   local has_telescope, telescope = pcall(require, "telescope.pickers")
 
@@ -129,6 +138,7 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
 end
 
 function M.show_buffer_reports()
+  clear_outdated_cache_results()
   local env, root = load_env()
   local project_key = get_sonar_project_key()
 
@@ -143,14 +153,13 @@ function M.show_buffer_reports()
 
   file = file:gsub(root .. "/", "")
 
-  local dismissed = load_state(dismissed_file)
   local read = load_state(read_file)
   local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
   local lines = {}
   local issue_keys = {}
 
   for _, issue in ipairs(issues.issues) do
-    if not dismissed[issue.key] then
+    if issue.issueStatus ~= "FIXED" then
       local is_read = read[issue.key] and "[X]" or "[  ]"
       local line = string.format(
         "%s - %s - %s %s (Line %s)",
@@ -182,10 +191,8 @@ function M.show_buffer_reports()
       end
     end,
     function(_, key)
-      dismissed[key] = true
       read[key] = true
 
-      save_state(dismissed, dismissed_file)
       save_state(read, read_file)
       M.show_buffer_reports()
     end,
@@ -197,14 +204,13 @@ function M.show_file_reports()
 
   if not project_key then return end
 
-  local dismissed = load_state(dismissed_file)
   local read = load_state(read_file)
   local files = {}
   local seen = {}
   local all_issues = get_issues("componentKeys="..project_key)
 
   for _, issue in ipairs(all_issues.issues) do
-    if not dismissed[issue.key] then
+    if issue.issueStatus ~= "FIXED" then
       local file = issue.component:match(project_key .. ":(.+)") or issue.component
 
       if not seen[file] then
@@ -230,7 +236,7 @@ function M.show_file_reports()
           local issue_keys = {}
 
           for _, issue in ipairs(issues.issues) do
-            if not dismissed[issue.key] then
+            if issue.issueStatus ~= "FIXED" then
               local is_read = read[issue.key] and "[x]" or "[ ]"
               local line = string.format(
                 "%s - %s - %s %s (Line %s)",
@@ -262,9 +268,7 @@ function M.show_file_reports()
               end
             end,
             function(_, key)
-              dismissed[key] = true
               read[key] = true
-              save_state(dismissed, dismissed_file)
               save_state(read, read_file)
               M.show_file_reports()
             end,
