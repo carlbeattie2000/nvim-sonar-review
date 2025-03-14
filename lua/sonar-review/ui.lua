@@ -132,6 +132,18 @@ local function show_issue_titles(file, titles, issue_details)
   end
 end
 
+local function can_view_issue(issue)
+  if issue.issueStatus == "FIXED" then
+    return false
+  end
+
+  if config.only_show_owned_issues and issue.author ~= git.get_user_email() then
+    return false
+  end
+
+  return true
+end
+
 function M.show_buffer_reports()
   local _, root = utils.load_env()
   local project_key = utils.get_sonar_project_key()
@@ -146,23 +158,20 @@ function M.show_buffer_reports()
   end
 
   file = file:gsub(root .. "/", "")
-
   local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file)
   local titles = {}
   local issue_details = {}
 
   for _, issue in ipairs(issues) do
-    if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author == git.get_user_email() then
-        local title = string.format(
-          "[%s] %s (Line %s)",
-          issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
-          issue.message,
-          issue.line or "N/A")
+    if can_view_issue(issue) then
+      local title = string.format(
+        "[%s] %s (Line %s)",
+        issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
+        issue.message,
+        issue.line or "N/A")
 
-        table.insert(titles, title)
-        issue_details[title] = issue
-      end
+      table.insert(titles, title)
+      issue_details[title] = issue
     end
   end
 
@@ -181,14 +190,12 @@ function M.show_file_reports()
   local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key)
 
   for _, issue in ipairs(issues) do
-    if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author == git.get_git_email() then
-        local file = issue.component:match(project_key .. ":(.+)") or issue.component
+    if can_view_issue(issue) then
+      local file = issue.component:match(project_key .. ":(.+)") or issue.component
 
-        if not seen[file] then
-          table.insert(files, file)
-          seen[file] = true
-        end
+      if not seen[file] then
+        table.insert(files, file)
+        seen[file] = true
       end
     end
   end
@@ -209,7 +216,7 @@ function M.show_file_reports()
           local issue_details = {}
 
           for _, issue in ipairs(issues) do
-            if issue.issueStatus ~= "FIXED" then
+            if can_view_issue(issue) then
               local title = string.format(
                 "[%s] %s (Line %s)",
                 issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
@@ -235,7 +242,7 @@ function M.show_file_reports()
       local issue_details = {}
 
       for _, issue in ipairs(issues.issues) do
-        if issue.issueStatus ~= "FIXED" then
+        if can_view_issue(issue) then
           local title = string.format(
             "[%s] %s (Line %s)",
             issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
