@@ -1,130 +1,11 @@
+local sonar_review = require 'sonar-review'
+local utils = require 'sonar-review.utils'
+local git = require 'sonar-review.git'
+local sonar_api = require 'sonar-review.sonar_api'
+
 local M = {}
 
-local default_options = {
-  only_show_owned_issues = false,
-  include_security_hotspots_insecure = false
-}
-
-local config = vim.tbl_deep_extend("force", default_options, {})
-
-local read_file = vim.fn.stdpath("cache") .. "/sonar-review-read.json"
-
-function M.get_git_email()
-  return vim.fn.system("git config user.email"):gsub("%s+", "") or nil
-end
-
-local function find_project_root()
-  local dir = vim.fn.expand("%:p:h")
-  local sonar_file = vim.fn.findfile("sonar-project.properties", dir .. ";")
-
-  if sonar_file == "" then
-    sonar_file = vim.fn.findfile("sonar-project.prompt_title", vim.fn.getcwd() .. ";")
-
-    if sonar_file == "" then
-      vim.notify("No sonar-project.properties found", vim.log.levels.WARN)
-
-      return nil
-    end
-  end
-
-  return vim.fn.fnamemodify(sonar_file, ":p:h")
-end
-
-local function get_sonar_project_key()
-  local root = find_project_root()
-
-  if not root then return nil end
-
-  local sonar_path = root .. "/sonar-project.properties"
-
-  if vim.fn.filereadable(sonar_path) == 1 then
-    for _, line in ipairs(vim.fn.readfile(sonar_path)) do
-      local key = line:match("^sonar%.projectKey=(.+)$")
-
-      if key then return key end
-    end
-  else
-    vim.notify("sonar-project.properties file not found in " .. root, vim.log.levels.INFO)
-
-    return nil
-  end
-end
-
-local function load_env()
-  local root = find_project_root()
-
-  if not root then return {}, nil end
-
-  local env_path = root .. "/.env"
-  local env = {}
-
-  if vim.fn.filereadable(env_path) == 1 then
-    for _, line in ipairs(vim.fn.readfile(env_path)) do
-      local key, value = line:match("^(.+)=(.+)$")
-
-      if key and value then
-        env[key] = value
-      end
-    end
-  else
-    vim.notify(".env not found in " .. root, vim.log.levels.INFO)
-  end
-
-  return env, root
-end
-
-local function load_state(file)
-  if vim.fn.filereadable(file) == 1 then
-    return vim.fn.json_decode(table.concat(vim.fn.readfile(file), "\n")) or {}
-  end
-
-  return {}
-end
-
-local function save_state(state, file)
-  vim.fn.writefile({ vim.fn.json_encode(state) }, file)
-end
-
-local function get_hotspots(query)
-  local env, _ = load_env()
-  local token = env.SONAR_TOKEN or "admin"
-  local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
-  local hotspot_query = query:gsub("componentKeys=", "project=")
-  local cmd = string.format("curl -s -u %s: '%s/api/hotspots/search?%s'", token, sonar_address, hotspot_query)
-  vim.print(cmd)
-  local result = vim.fn.system({ "sh", "-c", cmd })
-  local ok, decoded = pcall(vim.fn.json_decode, result)
-
-  return ok and decoded or { hotspots = {} }
-end
-
-local function get_issues(query)
-  local env, _ = load_env()
-  local token = env.SONAR_TOKEN or "admin"
-  local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
-  local cmd = string.format('curl -s -u %s: "%s/api/issues/search?%s"', token, sonar_address, query)
-  vim.print(cmd)
-  local result = vim.fn.system({ "sh", "-c", cmd })
-  local ok, issues_decoded = pcall(vim.fn.json_decode, result)
-  local issues = ok and issues_decoded or { issues = {} }
-
-  if not config.include_security_hotspots_insecure then
-    return issues
-  end
-
-  local hotspots_data = get_hotspots(query)
-
-  if hotspots_data.errors then
-    return issues
-  end
-
-  local combined_issues = {}
-
-  for _, issue in ipairs(issues) do table.insert(combined_issues, issue) end
-  for _, issue in ipairs(hotspots_data.hotspots) do table.insert(combined_issues, issue) end
-
-  return { issues = combined_issues }
-end
+local config = sonar_review.get_config()
 
 local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use_telescope)
   local has_telescope, telescope = pcall(require, "telescope.pickers")
@@ -169,7 +50,6 @@ local function show_reports(title, lines, issue_keys, on_select, on_dismiss, use
 end
 
 local function show_issue_details(file, issue)
-  vim.print(issue)
   local issue_type = issue.type or "UNKNOWN"
   local type_display = (issue_type == "SECURITY_HOTSPOT" and "Security Hotspot") or issue_type
   local issue_status = issue.issueStatus or issue.status
@@ -235,8 +115,12 @@ local function show_issue_titles(file, titles, issue_details)
       prompt_title = "Issues for " .. file,
       finder = require("telescope.finders").new_table({ results = titles }),
       sorter = require("telescope.sorters").get_generic_fuzzy_sorter(),
-      attach_mappings = function (prompt_bufnr, map)
-        map("i", "<CR>", function ()
+      attach_mappings = function(prompt_bufnr, map)
+        map("i", "<CR>", function()
+          if utils.table_len(issue_details) == 0 then
+            return
+          end
+
           local title = require("telescope.actions.state").get_selected_entry()[1]
           require("telescope.actions").close(prompt_bufnr)
           show_issue_details(file, issue_details[title])
@@ -249,8 +133,8 @@ local function show_issue_titles(file, titles, issue_details)
 end
 
 function M.show_buffer_reports()
-  local env, root = load_env()
-  local project_key = get_sonar_project_key()
+  local _, root = utils.load_env()
+  local project_key = utils.get_sonar_project_key()
 
   if not root or not project_key then return end
 
@@ -263,57 +147,50 @@ function M.show_buffer_reports()
 
   file = file:gsub(root .. "/", "")
 
-  local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
+  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file)
   local titles = {}
   local issue_details = {}
 
-  for _, issue in ipairs(issues.issues) do
+  for _, issue in ipairs(issues) do
     if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author ~= M.get_git_email() then
-        goto continue
+      if config.only_show_owned_issues and issue.author == git.get_user_email() then
+        local title = string.format(
+          "[%s] %s (Line %s)",
+          issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
+          issue.message,
+          issue.line or "N/A")
+
+        table.insert(titles, title)
+        issue_details[title] = issue
       end
-
-      local title = string.format(
-        "[%s] %s (Line %s)",
-        issue.type == "SECURITY_HOTSPOT" and "Hotspot" or issue.type,
-        issue.message,
-        issue.line or "N/A")
-
-      table.insert(titles, title)
-      issue_details[title] = issue
     end
-    ::continue::
   end
 
   if #titles == 0 then table.insert(titles, "No active issues found.") end
 
   show_issue_titles(file, titles, issue_details)
- end
+end
 
 function M.show_file_reports()
-  local project_key = get_sonar_project_key()
+  local project_key = utils.get_sonar_project_key()
 
   if not project_key then return end
 
-  local read = load_state(read_file)
   local files = {}
   local seen = {}
-  local all_issues = get_issues("componentKeys="..project_key)
+  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key)
 
-  for _, issue in ipairs(all_issues.issues) do
+  for _, issue in ipairs(issues) do
     if issue.issueStatus ~= "FIXED" then
-      if config.only_show_owned_issues and issue.author ~= M.get_git_email() then
-        goto continue
-      end
+      if config.only_show_owned_issues and issue.author == git.get_git_email() then
+        local file = issue.component:match(project_key .. ":(.+)") or issue.component
 
-      local file = issue.component:match(project_key .. ":(.+)") or issue.component
-
-      if not seen[file] then
-        table.insert(files, file)
-        seen[file] = true
+        if not seen[file] then
+          table.insert(files, file)
+          seen[file] = true
+        end
       end
     end
-    ::continue::
   end
 
   local has_telescope, telescope = pcall(require, "telescope.pickers")
@@ -327,11 +204,11 @@ function M.show_file_reports()
         map("i", "<CR>", function()
           local file = require("telescope.actions.state").get_selected_entry()[1]
           require("telescope.actions").close(prompt_bufnr)
-          local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. file)
+          issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file)
           local titles = {}
           local issue_details = {}
 
-          for _, issue in ipairs(issues.issues) do
+          for _, issue in ipairs(issues) do
             if issue.issueStatus ~= "FIXED" then
               local title = string.format(
                 "[%s] %s (Line %s)",
@@ -352,8 +229,8 @@ function M.show_file_reports()
       end,
     }, {}):find()
   else
-    show_reports("Files with Reports", files, {}, function (sel)
-      local issues = get_issues("componentKeys=" .. project_key .. "&files=" .. sel)
+    show_reports("Files with Reports", files, {}, function(sel)
+      issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. sel)
       local titles = {}
       local issue_details = {}
 
@@ -375,10 +252,6 @@ function M.show_file_reports()
       show_issue_titles(sel, titles, issue_details)
     end, nil, false)
   end
-end
-
-function M.setup(opts)
-  config = vim.tbl_deep_extend("force", default_options, opts or {})
 end
 
 return M

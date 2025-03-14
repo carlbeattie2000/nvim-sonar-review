@@ -44,15 +44,21 @@ With Packer:
    - Run :PackerSync and restart Neovim.
 
 5. Optional: Enhance with Telescope:
-   - Install telescope.nvim:
-     use "nvim-telescope/telescope.nvim"
-   - When present, <leader>cr and <leader>fr use Telescope for a fuzzy-searchable, interactive UI. Without it, a basic buffer UI is used.
+   - Install telescope.nvim: use "nvim-telescope/telescope.nvim"
 
 ## Usage
-- <leader>br: Reports for the current file.
-- <leader>fr: Search files with issues, then view reports.
+
+Open reports for the current file
+`:lua require('sonar-review.ui').show_buffer_reports()`
+
+Open all reports with fuzzy finder
+`:lua require('sonar-review.ui').show_file_reports()`
 
 ### Optional Config
-`opts.only_show_owned_issues` - Show only issues that you authored
-`opts.include_security_hotspots_insecure` - Show hotspot issues, requires greater permissions and can provide
+- `opts.only_show_owned_issues` - Show only issues that you authored
+- `opts.include_security_hotspots_insecure` - Show hotspot issues, requires greater permissions and can provide
 sensitive information.
+
+
+### Running tests
+Running tests: (luarocks path --lua-version 5.1 --bin) && busted --run unit
