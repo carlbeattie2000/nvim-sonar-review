@@ -62,3 +62,12 @@ sensitive information.
 
 ### Running tests
 Running tests: (luarocks path --lua-version 5.1 --bin) && busted --run unit
+
+#### TODO
+- Rewrite UI + testing for UI functions
+- Run sonar-scanner from nvim
+- Jump to next/prev issues in current buffer
+- Jump to next/prev across all buffers
+- Open window with full details about current issue
+
+Please if this is useful in anyway and you feel like a feature is missing, or a current feature is implemented incorrectly; create an issue.
