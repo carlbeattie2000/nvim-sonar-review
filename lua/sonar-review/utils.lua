@@ -35,6 +35,9 @@ function M.get_sonar_project_key()
 
     return nil
   end
+
+  vim.notify("project key not found in " .. root, vim.log.levels.INFO)
+  return nil
 end
 
 function M.load_env()
@@ -58,6 +61,12 @@ function M.load_env()
   end
 
   return env, root
+end
+
+function M.get_env_value(key)
+  local env = M.load_env()
+
+  return env[key]
 end
 
 local function is_table(table)

@@ -54,6 +54,9 @@ Open reports for the current file
 Open all reports with fuzzy finder
 `:lua require('sonar-review.ui').show_file_reports()`
 
+Run sonar scanner
+`:lua require('sonar-review.sonar_cmd').scan()`
+
 ### Optional Config
 - `opts.only_show_owned_issues` - Show only issues that you authored
 - `opts.include_security_hotspots_insecure` - Show hotspot issues, requires greater permissions and can provide
@@ -65,7 +68,6 @@ Running tests: (luarocks path --lua-version 5.1 --bin) && busted --run unit
 
 #### TODO
 - Rewrite UI + testing for UI functions
-- Run sonar-scanner from nvim
 - Jump to next/prev issues in current buffer
 - Jump to next/prev across all buffers
 - Open window with full details about current issue
