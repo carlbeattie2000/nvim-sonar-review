@@ -129,6 +129,8 @@ local function show_issue_titles(file, titles, issue_details)
         return true
       end,
     }, {}):find()
+  else
+      vim.notify("You need to install tree-sitter to be able to view issue details", vim.log.levels.ERROR)
   end
 end
 
@@ -241,7 +243,7 @@ function M.show_file_reports()
       local titles = {}
       local issue_details = {}
 
-      for _, issue in ipairs(issues.issues) do
+      for _, issue in ipairs(issues) do
         if can_view_issue(issue) then
           local title = string.format(
             "[%s] %s (Line %s)",

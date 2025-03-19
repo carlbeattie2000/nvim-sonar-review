@@ -5,6 +5,7 @@ A Neovim plugin for managing SonarQube reports in your editor.
 **This is my first plugin for neovim, it's most likely rough around the edges, all support is welcomed.**
 
 ## Features
+** Right now without tree-sitter functionality is limited**
 - <leader>br: Show reports for the current buffer.
 - <leader>fr: Search files and see their reports across commits.
 - <leader>d: Dismiss reports.
