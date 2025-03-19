@@ -2,7 +2,7 @@ local utils = require 'sonar-review.utils'
 
 local M = {}
 
-function M.scan()
+function M.scan(verbose)
   vim.notify("Scan Started")
   local root = utils.find_project_root() or "" .. "/."
   local project_key = utils.get_sonar_project_key()
@@ -13,9 +13,14 @@ function M.scan()
 
   if not sonar_token or not sonar_address then return end
 
-  local cmd = string.format("sonar-scanner -Dsonar.projectKey=%s -Dsonar.sources=%s -Dsonar.host.url=%s \"-Dsonar.exclusions=**/node_modules/**\" -Dsonar.token=%s", project_key, root, sonar_address, sonar_token)
+  local cmd = string.format("sonar-scanner -Dsonar.projectKey=%s -Dsonar.sources=. -Dsonar.projectBaseDir=%s -Dsonar.host.url=%s \"-Dsonar.exclusions=**/node_modules/**\" -Dsonar.token=%s", project_key, root, sonar_address, sonar_token)
   sonar_scan_output = vim.fn.system(cmd)
-  vim.notify(sonar_scan_output)
+
+  if verbose then
+    vim.notify(sonar_scan_output)
+  else
+    vim.notify("Scaning " .. root .. " has finished")
+  end
 end
 
 return M

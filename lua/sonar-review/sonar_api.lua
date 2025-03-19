@@ -28,6 +28,7 @@ function M.get_issues(query)
   local token = env.SONAR_TOKEN or "admin"
   local sonar_address = os.getenv("SONAR_ADDRESS") or "http://localhost:9000"
   local cmd = string.format('curl -s -u %s: "%s/api/issues/search?%s"', token, sonar_address, query)
+  vim.print(cmd)
   local result = vim.fn.system({ "sh", "-c", cmd })
   local ok, decoded = pcall(vim.fn.json_decode, result)
 
