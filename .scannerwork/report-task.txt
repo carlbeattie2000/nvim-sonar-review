@@ -1,6 +1,0 @@
-projectKey=postal_service
-serverUrl=http://localhost:9000
-serverVersion=25.3.0.104237
-dashboardUrl=http://localhost:9000/dashboard?id=postal_service
-ceTaskId=333cf125-ddeb-429b-b2ff-aadae8047998
-ceTaskUrl=http://localhost:9000/api/ce/task?id=333cf125-ddeb-429b-b2ff-aadae8047998
