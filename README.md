@@ -6,9 +6,16 @@ A Neovim plugin for managing SonarQube reports in your editor.
 
 ## Features
 **Right now without tree-sitter functionality is limited**
-- <leader>br: Show reports for the current buffer.
-- <leader>fr: Search files and see their reports across commits.
-- <leader>d: Dismiss reports.
+
+Open reports for the current file
+`:lua require('sonar-review.ui').show_buffer_reports()`
+
+Open all reports with fuzzy finder
+`:lua require('sonar-review.ui').show_file_reports()`
+
+Run sonar scanner
+`:lua require('sonar-review.sonar_cmd').scan()`
+
 
 ## Installation
 With Packer:
@@ -46,17 +53,6 @@ With Packer:
 
 5. Optional: Enhance with Telescope:
    - Install telescope.nvim: use "nvim-telescope/telescope.nvim"
-
-## Usage
-
-Open reports for the current file
-`:lua require('sonar-review.ui').show_buffer_reports()`
-
-Open all reports with fuzzy finder
-`:lua require('sonar-review.ui').show_file_reports()`
-
-Run sonar scanner
-`:lua require('sonar-review.sonar_cmd').scan()`
 
 ### Optional Config
 - `opts.only_show_owned_issues` - Show only issues that you authored
