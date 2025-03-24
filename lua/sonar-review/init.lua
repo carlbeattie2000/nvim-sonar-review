@@ -8,7 +8,8 @@ M.utils = utils
 
 local DefaultConfig = {
   only_show_owned_options = false,
-  include_security_hotspots_insecure = false
+  include_security_hotspots_insecure = false,
+  use_telescope = false
 }
 
 local SonarReviewConfig = vim.tbl_deep_extend('force', DefaultConfig, {})

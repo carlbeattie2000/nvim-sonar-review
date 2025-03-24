@@ -5,7 +5,14 @@ A Neovim plugin for managing SonarQube reports in your editor.
 **This is my first plugin for neovim, it's most likely rough around the edges, all support is welcomed.**
 
 ## Features
-**Right now without telescope functionality is limited**
+Optionally you can enable telescope when setting up the plugin.
+Without telescope the quick fix list is populated.
+
+```lua
+require('sonar-review').setup {
+    use_telescope = true
+}
+```
 
 Open reports for the current file
 `:lua require('sonar-review.ui').show_buffer_reports()`

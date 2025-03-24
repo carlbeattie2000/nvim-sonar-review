@@ -73,7 +73,22 @@ local function is_table(table)
   return type(table) == "table"
 end
 
-function M.print_table(table, pfn)
+local function get_tabs_string(depth)
+  if depth == 0 then
+    return ""
+  end
+
+  local tab_string = ""
+
+  for _ = 1, depth do
+    tab_string = tab_string .. "  "
+  end
+
+  return tab_string
+end
+
+function M.print_table(table, pfn, depth)
+  depth = depth or 0
   local _print = pfn or print
 
   if not is_table(table) then
@@ -83,9 +98,9 @@ function M.print_table(table, pfn)
   if #table > 0 then
     for _, value in ipairs(table) do
       if is_table(value) then
-        M.print_table(value)
+        M.print_table(value, pfn, depth + 1)
       else
-        _print(value)
+        _print(get_tabs_string(depth), value)
       end
     end
     return
@@ -93,11 +108,10 @@ function M.print_table(table, pfn)
 
   for k, v in pairs(table) do
     if is_table(v) then
-      _print(k)
-      M.print_table(v)
+      _print(get_tabs_string(depth), k)
+      M.print_table(v, pfn, depth + 1)
     else
-      _print(k)
-      _print(v)
+      _print(get_tabs_string(depth), k .. " = " .. tostring(v))
     end
   end
 end
@@ -118,6 +132,26 @@ function M.table_len(tbl)
   end
 
   return len
+end
+
+function M.print_dict_keys(table, pfn)
+  pfn = pfn or print
+
+  if not is_table(table) then
+    return
+  end
+
+  if #table > 0 then
+    return
+  end
+
+  for k, v in pairs(table) do
+    pfn(k)
+
+    if is_table(v) then
+      M.print_dict_keys(v, pfn)
+    end
+  end
 end
 
 return M
