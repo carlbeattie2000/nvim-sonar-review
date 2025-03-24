@@ -1,7 +1,7 @@
 local sonar_review = require 'sonar-review'
 local utils = require 'sonar-review.utils'
 local git = require 'sonar-review.git'
-local sonar_api = require 'sonar-review.sonar_api'
+local sonar_api = require 'sonar-review.api'
 local sonar_telescope = require "sonar-review.telescope"
 
 local M = {}
@@ -76,6 +76,10 @@ M.show_buffer_reports = function()
   end
 
   issues = utils.table_filter(issues, function(item)
+    if config.only_show_owned_options and item.author ~= git.get_user_email() then
+      return false
+    end
+
     return item.status ~= "CLOSED"
   end)
 
@@ -164,6 +168,10 @@ M.show_file_reports = function()
   end
 
   issues = utils.table_filter(issues, function(item)
+    if config.only_show_owned_options and item.author ~= git.get_user_email() then
+      return false
+    end
+
     return item.status ~= "CLOSED"
   end)
 

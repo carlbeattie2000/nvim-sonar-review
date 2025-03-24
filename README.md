@@ -10,7 +10,9 @@ Without telescope the quick fix list is populated.
 
 ```lua
 require('sonar-review').setup {
-    use_telescope = true
+    use_telescope = false,
+    include_security_hotspots_insecure = false,
+    only_show_owned_options = false,
 }
 ```
 
@@ -21,7 +23,7 @@ Open all reports with fuzzy finder
 `:lua require('sonar-review.ui').show_file_reports()`
 
 Run sonar scanner
-`:lua require('sonar-review.sonar_cmd').scan()`
+`:lua require('sonar-review.cmd').scan()`
 
 
 ## Installation
@@ -71,9 +73,6 @@ sensitive information.
 Running tests: (luarocks path --lua-version 5.1 --bin) && busted --run unit
 
 #### TODO
-- Rewrite UI + testing for UI functions
-- Jump to next/prev issues in current buffer
-- Jump to next/prev across all buffers
 - Open window with full details about current issue
 
 Please if this is useful in anyway and you feel like a feature is missing, or a current feature is implemented incorrectly; create an issue.
