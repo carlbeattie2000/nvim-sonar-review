@@ -154,4 +154,24 @@ function M.print_dict_keys(table, pfn)
   end
 end
 
+function M.clear_quickfix_list()
+  vim.fn.setqflist({})
+end
+
+function M.table_filter(t, filter_fn)
+  if not is_table(t) or #t == 0 then
+    return {}
+  end
+
+  local new_table = {}
+
+  for _, item in ipairs(t) do
+    if filter_fn(item) then
+      table.insert(new_table, item)
+    end
+  end
+
+  return new_table
+end
+
 return M

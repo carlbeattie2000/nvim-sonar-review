@@ -24,16 +24,16 @@
 
 
 return {
-	_all = {
-		coverage = false,
-		lua = './test/bin/lua',
-		['exclude-tags'] = {'skip'},
-	},
-	default = {
-		verbose = true,
-	},
+  _all = {
+    coverage = false,
+    lua = './test/bin/lua',
+    ['exclude-tags'] = { 'skip' },
+  },
+  default = {
+    verbose = true,
+  },
   unit = {
-    ROOT = {'./tests/unit/'}
+    ROOT = { './test/unit/' }
   },
 }
 

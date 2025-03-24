@@ -69,11 +69,15 @@ M.show_buffer_reports = function()
   end
 
   file = file:gsub(root .. "/", "")
-  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file)
+  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file .. "&ps=500")
 
   if not issues then
     return
   end
+
+  issues = utils.table_filter(issues, function(item)
+    return item.status ~= "CLOSED"
+  end)
 
   if config.use_telescope and show_buffer_reports_telescope({ root = root, issues = issues, project_key = project_key }) then
     return
@@ -153,11 +157,15 @@ M.show_file_reports = function()
 
   if not root or not project_key then return end
 
-  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key)
+  local issues = sonar_api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&ps=500")
 
   if not issues then
     return
   end
+
+  issues = utils.table_filter(issues, function(item)
+    return item.status ~= "CLOSED"
+  end)
 
   if config.use_telescope and show_file_reports_telescope({ root = root, issues = issues, project_key = project_key }) then
     return
@@ -166,7 +174,7 @@ M.show_file_reports = function()
 
   local quickfix_items = {}
 
-  for _, issue in ipairs(issues) do
+  for i, issue in ipairs(issues) do
     local file_path = root .. "/" .. issue.component:gsub(project_key .. ":", "")
     table.insert(quickfix_items, {
       filename = file_path,
