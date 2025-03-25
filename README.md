@@ -1,75 +1,88 @@
-# nvim-sonar-review **WIP**
-
-A Neovim plugin for managing SonarQube reports in your editor.
-
-**This is my first plugin for neovim, it's most likely rough around the edges, all support is welcomed.**
-
-## Features
-Optionally you can enable telescope when setting up the plugin.
-Without telescope the quick fix list is populated.
-
-```lua
-require('sonar-review').setup {
-    use_telescope = false,
-    include_security_hotspots_insecure = false,
-    only_show_owned_options = false,
-    page_size = 500
-}
-```
-
-Open reports for the current file
-`:lua require('sonar-review.ui').show_buffer_reports()`
-
-Open all reports with fuzzy finder
-`:lua require('sonar-review.ui').show_file_reports()`
-
-Run sonar scanner
-`:lua require('sonar-review.cmd').scan()`
-
+# nvim-sonar-review
+> Unstable --- Breaking changes and bugs are common
 
 ## Installation
-With Packer:
-`use "carlbeattie2000/nvim-sonar-review"`
+<details>
+  <summary>Packer</summary>
 
+  ```lua
+    use "carlbeattie2000/nvim-sonar-review"
+  ```
+</details>
+
+<details open>
+  <summary>Lazy</summary>
+
+  ```lua
+    -- init.lua
+    {
+        "carlbeattie2000/nvim-sonar-review"
+    }
+
+    -- plugins/sonar-review.lua
+    return {
+        "carlbeattie2000/nvim-sonar-review"
+        -- If you would like to use telescope
+        dependencies = { 'nvim-telescope/telescope.nvim' }
+    }
+  ```
+</details>
+
+## Usage
+```lua
+-- UI Displaying Issues
+local sonar_ui = require("sonar-review.ui")
+vim.keymap.set("n", "some_keybind", sonar_ui.show_buffer_reports())
+vim.keymap.set("n", "some_keybind", sonar_ui.show_file_reports())
+
+-- Sonar Commands
+local sonar_cmd = require("sonar-review.cmd")
+vim.keymap.set("n", "some_keybind", sonar_cmd.scan())
+```
+
+
+## Configuration
+##### Neovim
+```lua
+require("sonar-review").setup {
+    use_telescope = false, -- Use telescope instead of quickfix list
+    include_security_hotspots_insecure = false, -- Show hotspot issues, requires high permissions.
+    only_show_owned_options = false, -- Only show issues you authored
+    page_size = 500 -- Set limit of issues returned from API
+}
+```
+##### Local Project
+You will need to create two files at the root of your project.
+
+First a `.env` file with two values:
+```env
+SONAR_TOKEN=??
+SONAR_ADDRESS=??
+```
+
+You will also need a `sonar-project.properties` file containing the following:
+```bash
+sonar.projectKey=??
+sonar.sources=./
+sonar.exclusions=??
+```
+
+You can read more about sonar-project.properties file [here](https://docs.sonarsource.com/sonarqube-server/9.9/analyzing-source-code/scanners/sonarscanner/)
 ## Requirements
-- SonarQube: Running locally or on a custom server.
-- sonar-scanner cli
-- Environment Variables: SONAR_TOKEN, and optionally SONAR_ADDRESS.
-- Optional: telescope.nvim for a searchable UI.
+ - [SonarQube](https://docs.sonarsource.com/sonarqube-server/10.8/)
+ - [sonar-scanner](https://docs.sonarsource.com/sonarqube-server/9.9/analyzing-source-code/scanners/sonarscanner/)
+ - [Telescope](https://github.com/nvim-telescope/telescope.nvim) <span style="font-size: 12px; color: #ccc;">Optional</span>
 
-## Setup
-1. Install SonarQube:
-   - Use Docker for a local setup: docker run -d -p 9000:9000 sonarqube
-   - Visit http://localhost:9000, log in (default: admin/admin), and set a new password.
-
-2. Scan Your Project:
-   - Install sonar-scanner (e.g., brew install sonar-scanner).
-   - In your project root, create sonar-project.properties:
-     sonar.projectKey=[your project]
-     sonar.sources=.
-   - Run: sonar-scanner
-
-3. Set Environment Variables:
-    - Create a .env file in the same DIR as sonar-project.properties
-    - Add `SONAR_TOKEN` and optionally `SONAR_ADDRESS`
-
-4. Install the Plugin:
-   - Add to your Packer config:
-     require("packer").startup(function(use)
-       use "wbthomason/packer.nvim"
-       use "carlbeattie2000/nvim-sonar-review"
-     end)
-   - Run :PackerSync and restart Neovim.
-
-5. Optional: Enhance with Telescope:
-   - Install telescope.nvim: use "nvim-telescope/telescope.nvim"
-
-### Optional Config
-- `opts.only_show_owned_issues` - Show only issues that you authored
-- `opts.include_security_hotspots_insecure` - Show hotspot issues, requires greater permissions and can provide
-sensitive information.
-
-
+### SonarQube Installation
+###### SonarQube Server
+```bash
+docker run -d -p 9000:9000 sonarqube
+```
+###### sonar-scanner 
+```bash
+# Example, please refer to the offical documentation
+brew install sonar-scanner
+```
 ### Running tests
 Running tests: (luarocks path --lua-version 5.1 --bin) && busted --run unit
 
