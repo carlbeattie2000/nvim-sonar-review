@@ -180,8 +180,12 @@ local function smart_send(prompt_bufnr, mode)
   end
 end
 
-M.show_buffer_issues = function(opts)
+M.show_issues = function(opts, type)
   opts = opts or {}
+
+  if type == "buffer" then
+    opts.is_buffer = true
+  end
 
   for _, issue in ipairs(opts.issues) do
     local short_path = issue.component:gsub(opts.project_key .. ":", "")
@@ -206,59 +210,9 @@ M.show_buffer_issues = function(opts)
         actions.close(prompt_bufnr)
 
         if selection then
-          vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
-        end
-      end)
-      actions.send_to_qflist:replace(function()
-        send_all_to_qflist_action(prompt_bufnr, " ")
-      end)
-      actions.add_to_qflist:replace(function()
-        send_all_to_qflist_action(prompt_bufnr, "a")
-      end)
-      actions.send_selected_to_qflist:replace(function()
-        send_selected_to_qflist_action(prompt_bufnr, " ")
-      end)
-      actions.add_selected_to_qflist:replace(function()
-        send_selected_to_qflist_action(prompt_bufnr, "a")
-      end)
-      actions.smart_send_to_qflist:replace(function()
-        smart_send(prompt_bufnr, " ")
-      end)
-      actions.smart_add_to_qflist:replace(function()
-        smart_send(prompt_bufnr, "a")
-      end)
-
-      return true
-    end
-  }):find()
-end
-
-M.show_file_issues = function(opts)
-  opts = opts or {}
-
-  for _, issue in ipairs(opts.issues) do
-    local short_path = issue.component:gsub(opts.project_key .. ":", "")
-    local filepath = opts.root .. "/" .. short_path
-    issue.filepath = filepath
-    issue.short_path = short_path
-  end
-
-  opts = opts or {}
-  opts.entry_maker = vim.F.if_nil(opts.entry_maker, M.gen_from_issues(opts))
-  opts.previewer = M.sonar_previewer(opts)
-
-  pickers.new(opts, {
-    prompt_title = "Sonar Issues - [Files]",
-    finder = finders.new_table({ results = opts.issues, entry_maker = opts.entry_maker }),
-    previewer = opts.previewer,
-    sorter = conf.file_sorter(opts),
-    attach_mappings = function(prompt_bufnr)
-      actions.select_default:replace(function()
-        local selection = action_state.get_selected_entry()
-        actions.close(prompt_bufnr)
-
-        if selection then
-          vim.cmd("edit " .. vim.fn.fnameescape(selection.filepath))
+          if not type or type ~= "buffer" then
+            vim.cmd("edit " .. vim.fn.fnameescape(selection.filepath))
+          end
           vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
         end
       end)
