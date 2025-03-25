@@ -9,6 +9,8 @@ local finders = require "telescope.finders"
 local previewers = require "telescope.previewers"
 local entry_display = require("telescope.pickers.entry_display")
 local conf = require("telescope.config").values
+local actions = require "telescope.actions"
+local action_state = require "telescope.actions.state"
 
 function M.gen_from_issues(opts)
   opts = opts or {}
@@ -118,6 +120,74 @@ M.sonar_previewer = function(opts)
       vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
     end,
   }
+end
+
+M.show_buffer_issues = function(opts)
+  opts = opts or {}
+
+  for _, issue in ipairs(opts.issues) do
+    local short_path = issue.component:gsub(opts.project_key .. ":", "")
+    local filepath = opts.root .. "/" .. short_path
+    issue.filepath = filepath
+    issue.short_path = short_path
+  end
+
+  opts = opts or {}
+  opts.is_buffer = true
+  opts.entry_maker = vim.F.if_nil(opts.entry_maker, M.gen_from_issues(opts))
+  opts.previewer = M.sonar_previewer(opts)
+
+  pickers.new(opts, {
+    prompt_title = "Sonar Issues - [Current Buffer]",
+    finder = finders.new_table({ results = opts.issues, entry_maker = opts.entry_maker }),
+    previewer = opts.previewer,
+    sorter = conf.file_sorter(opts),
+    attach_mappings = function(prompt_bufnr)
+      actions.select_default:replace(function()
+        local selection = action_state.get_selected_entry()
+        actions.close(prompt_bufnr)
+
+        if selection then
+          vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+        end
+      end)
+      return true
+    end
+  }):find()
+end
+
+M.show_file_issues = function(opts)
+  opts = opts or {}
+
+  for _, issue in ipairs(opts.issues) do
+    local short_path = issue.component:gsub(opts.project_key .. ":", "")
+    local filepath = opts.root .. "/" .. short_path
+    issue.filepath = filepath
+    issue.short_path = short_path
+  end
+
+  opts = opts or {}
+  opts.entry_maker = vim.F.if_nil(opts.entry_maker, M.gen_from_issues(opts))
+  opts.previewer = M.sonar_previewer(opts)
+
+  pickers.new(opts, {
+    prompt_title = "Sonar Issues - [Files]",
+    finder = finders.new_table({ results = opts.issues, entry_maker = opts.entry_maker }),
+    previewer = opts.previewer,
+    sorter = conf.file_sorter(opts),
+    attach_mappings = function(prompt_bufnr)
+      actions.select_default:replace(function()
+        local selection = action_state.get_selected_entry()
+        actions.close(prompt_bufnr)
+
+        if selection then
+          vim.cmd("edit " .. vim.fn.fnameescape(selection.filepath))
+          vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+        end
+      end)
+      return true
+    end
+  }):find()
 end
 
 return M
