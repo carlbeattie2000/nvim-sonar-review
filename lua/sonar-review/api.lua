@@ -16,6 +16,7 @@ function M.get_hotspots(query)
   end
 
   local hotspot_query = query:gsub("componentKeys=", "project=")
+
   local cmd = string.format("curl -s --max-time 2 -u %s: '%s/api/hotspots/search?%s'", token, sonar_address,
     hotspot_query)
   local result = vim.fn.system({ "sh", "-c", cmd })

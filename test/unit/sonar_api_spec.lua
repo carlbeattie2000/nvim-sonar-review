@@ -47,7 +47,7 @@ describe('Queries sonar review API, getting issues and hotspots', function()
 
     local hotspots = sonar_api.get_hotspots("")
 
-    assert.is.equal(0, #hotspots)
+    assert.is.equal(nil, hotspots)
   end)
 
   it('Fetches issues', function()
@@ -63,13 +63,13 @@ describe('Queries sonar review API, getting issues and hotspots', function()
 
     local issues = sonar_api.get_issues("")
 
-    assert.is.equal(0, #issues)
+    assert.is.equal(nil, issues)
   end)
 
   it('Fetches issues and hotspots, when config allows hotspots', function()
     system_stub.returns('{"issues": [{"key": "92bacc01-a9e2-4a8c-b953-c79dd383f0fc"}]}')
     system_stub.on_call_with({ "sh", "-c",
-      "curl -s -u example_token: 'http://localhost:9000/api/hotspots/search?project=example_service'" })
+      "curl -s --max-time 2 -u example_token: 'http://localhost:9000/api/hotspots/search?project=example_service'" })
         .returns('{"hotspots": [{"key": "92bacc01-a9e2-4a8c-b953-c79dd383f0fc"}]}')
 
     local issues = sonar_api.get_issues_and_hotspots("componentKeys=example_service")

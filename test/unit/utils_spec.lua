@@ -10,6 +10,8 @@ describe('Util functions', function()
   local orignal_getcwd_fn
   local orignal_filereadable_fn
   local orignal_readfile_fn
+  local orignal_version_fn
+  local orignal_version_ge_fn
 
   before_each(function()
     nvim = yd.start()
@@ -20,6 +22,8 @@ describe('Util functions', function()
     orignal_getcwd_fn = vim.fn.getcwd
     orignal_filereadable_fn = vim.fn.filereadable
     orignal_readfile_fn = vim.fn.readfile
+    orignal_version_fn = vim.version
+    orignal_version_ge_fn = vim.version.ge
   end)
 
   after_each(function()
@@ -31,10 +35,11 @@ describe('Util functions', function()
     vim.fn.getcwd = orignal_getcwd_fn
     vim.fn.filereadable = orignal_filereadable_fn
     vim.fn.readfile = orignal_readfile_fn
+    vim.version = orignal_version_fn
   end)
 
   it('Returns project root dir', function()
-    vim.fn.expand = function (string)
+    vim.fn.expand = function(string)
       if string ~= "" then
         return "/example/project/dir"
       end
@@ -42,7 +47,7 @@ describe('Util functions', function()
       return ""
     end
 
-    vim.fn.findfile = function (file, path)
+    vim.fn.findfile = function(file, path)
       if file and path then
         return file
       end
@@ -50,7 +55,7 @@ describe('Util functions', function()
       return ""
     end
 
-    vim.fn.fnamemodify = function (fileName, mods)
+    vim.fn.fnamemodify = function(fileName, mods)
       return "/example/project/dir"
     end
 
@@ -59,16 +64,16 @@ describe('Util functions', function()
     assert.is.equal("/example/project/dir", root_dir)
   end)
 
-  it('Returns project property key', function ()
-    utils.find_project_root = function ()
+  it('Returns project property key', function()
+    utils.find_project_root = function()
       return ""
     end
 
-    vim.fn.filereadable = function (file)
+    vim.fn.filereadable = function(file)
       return 1
     end
 
-    vim.fn.readfile = function (fname)
+    vim.fn.readfile = function(fname)
       return { "sonar.projectKey=exampleKey" }
     end
 
@@ -77,8 +82,8 @@ describe('Util functions', function()
     assert.is.equal("exampleKey", project_key)
   end)
 
-  it('Returns project property key, but find project root is nil', function ()
-    utils.find_project_root = function ()
+  it('Returns project property key, but find project root is nil', function()
+    utils.find_project_root = function()
       return nil
     end
 
@@ -87,8 +92,8 @@ describe('Util functions', function()
     assert.is.Nil(project_key)
   end)
 
-  it('Returns project property key, but file is not readable', function ()
-    utils.find_project_root = function ()
+  it('Returns project property key, but file is not readable', function()
+    utils.find_project_root = function()
       return ""
     end
 
@@ -101,16 +106,16 @@ describe('Util functions', function()
     assert.is.Nil(project_key)
   end)
 
-  it('Returns project property key, but file content is invalid', function ()
-    utils.find_project_root = function ()
+  it('Returns project property key, but file content is invalid', function()
+    utils.find_project_root = function()
       return ""
     end
 
-    vim.fn.filereadable = function (file)
+    vim.fn.filereadable = function(file)
       return 1
     end
 
-    vim.fn.readfile = function (fname)
+    vim.fn.readfile = function(fname)
       return { "sonar.projectXey=exampleKey" }
     end
 
@@ -119,7 +124,7 @@ describe('Util functions', function()
     assert.is.Nil(project_key)
   end)
 
-  it('Returns env file values as table', function ()
+  it('Returns env file values as table', function()
     utils.find_project_root = function()
       return ""
     end
@@ -164,7 +169,7 @@ describe('Util functions', function()
       return ""
     end
 
-    vim.fn.filereadable = function (file)
+    vim.fn.filereadable = function(file)
       return 0
     end
 
@@ -202,12 +207,38 @@ describe('Util functions', function()
   end)
 
   it('Gets a tables length', function()
-    local arr = {1, 2, 3, 4}
+    local arr = { 1, 2, 3, 4 }
     local empty_arr = {}
     local map = { testing = 14, testing_02 = 15 }
 
     assert.is.equal(4, utils.table_len(arr))
     assert.is.equal(0, utils.table_len(empty_arr))
     assert.is.equal(2, utils.table_len(map))
+  end)
+
+  ---comment
+  ---@param version_str string
+  local mock_version_fn = function(version_str)
+    vim.version = {}
+
+    setmetatable(vim.version, {
+      __call = function()
+        return version_str
+      end
+    })
+
+    vim.version.ge = orignal_version_ge_fn
+  end
+
+  it('Checks if version of neovim is above required', function()
+    mock_version_fn("0.9.0")
+    assert.is.truthy(utils.neovim_is_above_or_equal_version({ minor = 9 }))
+    assert.is.truthy(utils.neovim_is_above_or_equal_version('0.9.0'))
+    mock_version_fn("0.9.3")
+    assert.is.falsy(utils.neovim_is_above_or_equal_version({ minor = 9, patch = 4 }))
+    assert.is.falsy(utils.neovim_is_above_or_equal_version('0.9.4'))
+    mock_version_fn("0.10.0")
+    assert.is.truthy(utils.neovim_is_above_or_equal_version({ minor = 10 }))
+    assert.is.truthy(utils.neovim_is_above_or_equal_version('0.10.0'))
   end)
 end)

@@ -29,9 +29,9 @@
 
 # Set custom XDG base directory paths to isolate the test Neovim from the
 # user's own configuration and data files.
-export XDG_CONFIG_HOME='tests/xdg/config/'
-export XDG_STATE_HOME='tests/xdg/local/state/'
-export XDG_DATA_HOME='tests/xdg/local/share/'
+export XDG_CONFIG_HOME='test/xdg/config/'
+export XDG_STATE_HOME='test/xdg/local/state/'
+export XDG_DATA_HOME='test/xdg/local/share/'
 
 # Handle Lua command-line arguments; not all options are supported
 while getopts 'ilEve:' opt; do

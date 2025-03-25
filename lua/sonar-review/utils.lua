@@ -174,4 +174,23 @@ function M.table_filter(t, filter_fn)
   return new_table
 end
 
+---comment
+---@return unknown
+M.get_neovim_version = function()
+  return vim.version()
+end
+
+---comment
+---@param version_t { major: number?, minor: number?, patch: number? } | string
+---@return boolean
+M.neovim_is_above_or_equal_version = function(version_t)
+  local version = M.get_neovim_version()
+
+  if type(version_t) == "string" then
+    return vim.version.ge(version, version_t)
+  end
+
+  return vim.version.ge(version, { version_t.major, version_t.minor, version_t.patch })
+end
+
 return M

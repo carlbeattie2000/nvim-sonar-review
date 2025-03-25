@@ -14,7 +14,7 @@ function M.scan(verbose)
   if not sonar_token or not sonar_address then return end
 
   local cmd = string.format(
-  "sonar-scanner -Dsonar.projectKey=%s -Dsonar.sources=. -Dsonar.projectBaseDir=%s -Dsonar.host.url=%s \"-Dsonar.exclusions=**/node_modules/**\" -Dsonar.token=%s",
+    "sonar-scanner -Dsonar.projectKey=%s -Dsonar.sources=. -Dsonar.projectBaseDir=%s -Dsonar.host.url=%s \"-Dsonar.exclusions=**/node_modules/**\" -Dsonar.token=%s",
     project_key, root, sonar_address, sonar_token)
   local sonar_scan_output = vim.fn.system(cmd)
 
