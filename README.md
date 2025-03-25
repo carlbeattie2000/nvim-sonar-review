@@ -13,6 +13,7 @@ require('sonar-review').setup {
     use_telescope = false,
     include_security_hotspots_insecure = false,
     only_show_owned_options = false,
+    page_size = 500
 }
 ```
 

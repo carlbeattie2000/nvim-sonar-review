@@ -21,7 +21,8 @@ M.show_buffer_reports = function()
   end
 
   file = file:gsub(root .. "/", "")
-  local issues = api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&files=" .. file .. "&ps=500")
+  local issues = api.get_issues_and_hotspots("componentKeys=" ..
+  project_key .. "&files=" .. file .. "&ps=" .. config.page_size)
 
   if not issues then
     return
@@ -68,7 +69,7 @@ M.show_file_reports = function()
 
   if not root or not project_key then return end
 
-  local issues = api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&ps=500")
+  local issues = api.get_issues_and_hotspots("componentKeys=" .. project_key .. "&ps=" .. config.page_size)
 
   if not issues then
     return
