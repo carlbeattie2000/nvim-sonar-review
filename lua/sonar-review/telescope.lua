@@ -122,6 +122,35 @@ M.sonar_previewer = function(opts)
   }
 end
 
+local entry_to_qf = function(entry)
+  return {
+    bufnr = entry.bufnr,
+    filename = entry.short_path,
+    lnum = entry.lnum,
+    text = entry.message
+  }
+end
+
+local send_to_qflist_action = function(prompt_bufnr)
+  local picker = action_state.get_current_picker(prompt_bufnr)
+  local manager = picker.manager
+
+  local qf_entries = {}
+  for entry in manager:iter() do
+    table.insert(qf_entries, entry_to_qf(entry))
+  end
+
+  local prompt = picker:_get_prompt()
+  actions.close(prompt_bufnr)
+
+  vim.api.nvim_exec_autocmds("QuickFixCmdPre", {})
+  local qf_title = string.format("[[%s (%s)]]", picker.prompt_title, prompt)
+
+  vim.fn.setqflist(qf_entries, " ")
+  vim.fn.setqflist({}, "a", { title = qf_title })
+  vim.api.nvim_exec_autocmds("QuickFixCmdPost", {})
+end
+
 M.show_buffer_issues = function(opts)
   opts = opts or {}
 
@@ -151,6 +180,8 @@ M.show_buffer_issues = function(opts)
           vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
         end
       end)
+      actions.send_to_qflist:replace(send_to_qflist_action)
+
       return true
     end
   }):find()
@@ -185,6 +216,8 @@ M.show_file_issues = function(opts)
           vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
         end
       end)
+      actions.send_to_qflist:replace(send_to_qflist_action)
+
       return true
     end
   }):find()
