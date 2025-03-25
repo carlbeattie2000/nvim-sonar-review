@@ -2,6 +2,7 @@ local sonar_review = require 'sonar-review'
 local utils = require 'sonar-review.utils'
 local git = require 'sonar-review.git'
 local api = require 'sonar-review.api'
+local quickfix = require 'sonar-review.quickfix'
 
 local M = {}
 
@@ -22,7 +23,7 @@ M.show_buffer_reports = function()
 
   file = file:gsub(root .. "/", "")
   local issues = api.get_issues_and_hotspots("componentKeys=" ..
-  project_key .. "&files=" .. file .. "&ps=" .. config.page_size)
+    project_key .. "&files=" .. file .. "&ps=" .. config.page_size)
 
   if not issues then
     return
@@ -43,24 +44,7 @@ M.show_buffer_reports = function()
   end
 
 
-  local quickfix_items = {}
-  local bufnr = vim.api.nvim_get_current_buf()
-
-  for _, issue in ipairs(issues) do
-    table.insert(quickfix_items, {
-      bufnr = bufnr,
-      lnum = issue.textRange.startLine,
-      end_lnum = issue.textRange.endLine,
-      text = issue.message,
-    })
-  end
-
-  vim.fn.setqflist({}, ' ', {
-    title = "Sonar Review Issues - [Buffer Reports]",
-    items = quickfix_items
-  })
-
-  vim.cmd [[botright copen]]
+  quickfix.set_buffer_issues_quickfix_list({ issues = issues })
 end
 
 M.show_file_reports = function()
@@ -89,24 +73,11 @@ M.show_file_reports = function()
     return
   end
 
-  local quickfix_items = {}
-
-  for _, issue in ipairs(issues) do
-    local file_path = root .. "/" .. issue.component:gsub(project_key .. ":", "")
-    table.insert(quickfix_items, {
-      filename = file_path,
-      lnum = issue.textRange.startLine,
-      end_lnum = issue.textRange.endLine,
-      text = issue.message,
-    })
-  end
-
-  vim.fn.setqflist({}, ' ', {
-    title = "Sonar Review Issues - [File Reports]",
-    items = quickfix_items
+  quickfix.set_files_issues_quickfix_list({
+    issues = issues,
+    root = root,
+    project_key = project_key
   })
-
-  vim.cmd [[botright copen]]
 end
 
 return M
