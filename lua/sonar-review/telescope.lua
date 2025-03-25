@@ -131,7 +131,26 @@ local entry_to_qf = function(entry)
   }
 end
 
-local send_to_qflist_action = function(prompt_bufnr)
+local send_selected_to_qflist_action = function(prompt_bufnr, mode)
+  local picker = action_state.get_current_picker(prompt_bufnr)
+
+  local qf_entries = {}
+  for _, entry in ipairs(picker:get_multi_selection()) do
+    table.insert(qf_entries, entry_to_qf(entry))
+  end
+
+  local prompt = picker:_get_prompt()
+  actions.close(prompt_bufnr)
+
+  vim.api.nvim_exec_autocmds("QuickFixCmdPre", {})
+  local qf_title = string.format("[[%s (%s)]]", picker.prompt_title, prompt)
+
+  vim.fn.setqflist(qf_entries, mode)
+  vim.fn.setqflist({}, "a", { title = qf_title })
+  vim.api.nvim_exec_autocmds("QuickFixCmdPost", {})
+end
+
+local send_all_to_qflist_action = function(prompt_bufnr, mode)
   local picker = action_state.get_current_picker(prompt_bufnr)
   local manager = picker.manager
 
@@ -146,9 +165,19 @@ local send_to_qflist_action = function(prompt_bufnr)
   vim.api.nvim_exec_autocmds("QuickFixCmdPre", {})
   local qf_title = string.format("[[%s (%s)]]", picker.prompt_title, prompt)
 
-  vim.fn.setqflist(qf_entries, " ")
+  vim.fn.setqflist(qf_entries, mode)
   vim.fn.setqflist({}, "a", { title = qf_title })
   vim.api.nvim_exec_autocmds("QuickFixCmdPost", {})
+end
+
+local function smart_send(prompt_bufnr, mode)
+  local picker = action_state.get_current_picker(prompt_bufnr)
+
+  if #picker:get_multi_selection() > 0 then
+    send_selected_to_qflist_action(prompt_bufnr, mode)
+  else
+    send_all_to_qflist_action(prompt_bufnr, mode)
+  end
 end
 
 M.show_buffer_issues = function(opts)
@@ -180,7 +209,24 @@ M.show_buffer_issues = function(opts)
           vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
         end
       end)
-      actions.send_to_qflist:replace(send_to_qflist_action)
+      actions.send_to_qflist:replace(function()
+        send_all_to_qflist_action(prompt_bufnr, " ")
+      end)
+      actions.add_to_qflist:replace(function()
+        send_all_to_qflist_action(prompt_bufnr, "a")
+      end)
+      actions.send_selected_to_qflist:replace(function()
+        send_selected_to_qflist_action(prompt_bufnr, " ")
+      end)
+      actions.add_selected_to_qflist:replace(function()
+        send_selected_to_qflist_action(prompt_bufnr, "a")
+      end)
+      actions.smart_send_to_qflist:replace(function()
+        smart_send(prompt_bufnr, " ")
+      end)
+      actions.smart_add_to_qflist:replace(function()
+        smart_send(prompt_bufnr, "a")
+      end)
 
       return true
     end
@@ -216,7 +262,24 @@ M.show_file_issues = function(opts)
           vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
         end
       end)
-      actions.send_to_qflist:replace(send_to_qflist_action)
+      actions.send_to_qflist:replace(function()
+        send_all_to_qflist_action(prompt_bufnr, " ")
+      end)
+      actions.add_to_qflist:replace(function()
+        send_all_to_qflist_action(prompt_bufnr, "a")
+      end)
+      actions.send_selected_to_qflist:replace(function()
+        send_selected_to_qflist_action(prompt_bufnr, " ")
+      end)
+      actions.add_selected_to_qflist:replace(function()
+        send_selected_to_qflist_action(prompt_bufnr, "a")
+      end)
+      actions.smart_send_to_qflist:replace(function()
+        smart_send(prompt_bufnr, " ")
+      end)
+      actions.smart_add_to_qflist:replace(function()
+        smart_send(prompt_bufnr, "a")
+      end)
 
       return true
     end
