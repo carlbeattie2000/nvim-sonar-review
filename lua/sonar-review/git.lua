@@ -1,5 +1,7 @@
 local M = {}
 
+---comment
+---@return string | nil
 function M.get_user_email()
   local email = vim.fn.system("git config user.email")
 

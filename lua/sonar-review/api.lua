@@ -3,6 +3,63 @@ local utils = require 'sonar-review.utils'
 
 local M = {}
 
+---@alias HotspotsType {
+--- key: string,
+--- component: string,
+--- project: string,
+--- securityCategory: string,
+--- vulnerabilityProbability: string,
+--- status: string,
+--- line: number,
+--- textRange: {
+---   startLine: number,
+---   endLine: number,
+---   startOffset: number,
+---   endOffset: number,
+--- },
+--- flows: table,
+--- message: string,
+--- author: string,
+--- creationDate: string,
+--- updateDate: string,
+--- ruleKey: string,
+--- messageFormattings: string[] }
+
+---@alias IssuesType {
+--- key: string,
+--- rule: string,
+--- severity: string,
+--- component: string,
+--- project: string,
+--- hash: string,
+--- textRange: {
+---   startLine: number,
+---   endLine: number,
+---   startOffset: number,
+---   endOffset: number,
+--- },
+--- flows: table,
+--- resolution: string,
+--- status: string,
+--- message: string,
+--- effort: string,
+--- debt: string,
+--- author: string,
+--- tags: string[],
+--- creationDate: string,
+--- updateDate: string,
+--- closeDate: string,
+--- type: string,
+--- quickFixAvailable: boolean,
+--- messageFormattings: string[],
+--- codeVariants: string[],
+--- cleanCodeAtribute: string,
+--- cleanCodeAtributeCategory: string,
+--- impacts: { softwareQuality: string, severity: string }[] }
+
+---comment
+---@param query string
+---@return HotspotsType[] | {} | nil
 function M.get_hotspots(query)
   if not query then return {} end
 
@@ -29,6 +86,9 @@ function M.get_hotspots(query)
   return ok and decoded.hotspots or {}
 end
 
+---comment
+---@param query string
+---@return IssuesType[] | {} | nil
 function M.get_issues(query)
   if not query then return {} end
 
@@ -52,6 +112,9 @@ function M.get_issues(query)
   return ok and decoded.issues or {}
 end
 
+---comment
+---@param query string
+---@return (HotspotsType | IssuesType)[] | {}
 function M.get_issues_and_hotspots(query)
   local config = sonarReview.get_config()
   local issues = M.get_issues(query)

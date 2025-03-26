@@ -12,6 +12,9 @@ local conf = require("telescope.config").values
 local actions = require "telescope.actions"
 local action_state = require "telescope.actions.state"
 
+---comment
+---@param opts any
+---@return function
 function M.gen_from_issues(opts)
   opts = opts or {}
 
@@ -86,6 +89,9 @@ function M.gen_from_issues(opts)
   end
 end
 
+---comment
+---@param opts any
+---@return table
 M.sonar_previewer = function(opts)
   return previewers.new_buffer_previewer {
     title = "Issue Preview",
@@ -122,6 +128,9 @@ M.sonar_previewer = function(opts)
   }
 end
 
+---comment
+---@param entry any
+---@return { bufnr: string | nil, filename: string, lnum: number, text: string }
 local entry_to_qf = function(entry)
   return {
     bufnr = entry.bufnr,
@@ -131,6 +140,9 @@ local entry_to_qf = function(entry)
   }
 end
 
+---comment
+---@param prompt_bufnr any
+---@param mode " " | "a"
 local send_selected_to_qflist_action = function(prompt_bufnr, mode)
   local picker = action_state.get_current_picker(prompt_bufnr)
 
@@ -150,6 +162,9 @@ local send_selected_to_qflist_action = function(prompt_bufnr, mode)
   vim.api.nvim_exec_autocmds("QuickFixCmdPost", {})
 end
 
+---comment
+---@param prompt_bufnr any
+---@param mode " " | "a"
 local send_all_to_qflist_action = function(prompt_bufnr, mode)
   local picker = action_state.get_current_picker(prompt_bufnr)
   local manager = picker.manager
@@ -170,6 +185,9 @@ local send_all_to_qflist_action = function(prompt_bufnr, mode)
   vim.api.nvim_exec_autocmds("QuickFixCmdPost", {})
 end
 
+---comment
+---@param prompt_bufnr any
+---@param mode " " | "a"
 local function smart_send(prompt_bufnr, mode)
   local picker = action_state.get_current_picker(prompt_bufnr)
 
@@ -180,6 +198,9 @@ local function smart_send(prompt_bufnr, mode)
   end
 end
 
+---comment
+---@param opts any
+---@param type "buffer" | nil
 M.show_issues = function(opts, type)
   opts = opts or {}
 

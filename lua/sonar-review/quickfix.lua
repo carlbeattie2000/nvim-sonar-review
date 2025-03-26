@@ -1,5 +1,8 @@
 local M = {}
 
+---comment
+---@param opts any
+---@param search_type "buffer" | nil
 M.set_qflist = function(opts, search_type)
   opts = opts or {}
 

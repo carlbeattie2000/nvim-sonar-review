@@ -8,6 +8,8 @@ local M = {}
 
 local config = sonar_review.get_config()
 
+---comment
+---@param search_type "buffer" | nil
 local show_reports = function(search_type)
   local _, root = utils.load_env()
   local project_key = utils.get_sonar_project_key()
