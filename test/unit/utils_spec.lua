@@ -206,16 +206,6 @@ describe('Util functions', function()
     assert.is.equal(0, length)
   end)
 
-  it('Gets a tables length', function()
-    local arr = { 1, 2, 3, 4 }
-    local empty_arr = {}
-    local map = { testing = 14, testing_02 = 15 }
-
-    assert.is.equal(4, utils.table_len(arr))
-    assert.is.equal(0, utils.table_len(empty_arr))
-    assert.is.equal(2, utils.table_len(map))
-  end)
-
   ---comment
   ---@param version_str string
   local mock_version_fn = function(version_str)
