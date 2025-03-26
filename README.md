@@ -38,6 +38,9 @@ vim.keymap.set("n", "some_keybind", sonar_ui.show_file_reports())
 -- Sonar Commands
 local sonar_cmd = require("sonar-review.cmd")
 vim.keymap.set("n", "some_keybind", sonar_cmd.scan())
+
+-- You can also run sonar-scanner async, requires Neovim v0.10.0+
+vim.keymap.set("n", "some_keybind", sonar_cmd.scan_async())
 ```
 
 
